@@ -1,9 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  reactStrictMode: true,
   images: {
-    unoptimized: true,
+    domains: ['stream.intuitv.app', 'api.intuitv.app'],
   },
+  // Add this for Netlify
+  output: 'standalone',
 }
 
 module.exports = nextConfig
