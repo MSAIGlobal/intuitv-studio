@@ -21,6 +21,8 @@ export default function SignupPage() {
     setError('')
 
     try {
+      console.log('Submitting signup...', { email: formData.email, name: formData.name })
+      
       // Create account
       const signupRes = await fetch('/api/auth/signup', {
         method: 'POST',
@@ -28,32 +30,40 @@ export default function SignupPage() {
         body: JSON.stringify(formData)
       })
 
+      console.log('Signup response status:', signupRes.status)
+      
       if (!signupRes.ok) {
         const data = await signupRes.json()
         throw new Error(data.error || 'Signup failed')
       }
 
       const { userId } = await signupRes.json()
+      console.log('User created:', userId)
 
-      // Create Stripe checkout session for 14-day trial
+      // Create Stripe checkout session
       const stripeRes = await fetch('/api/stripe/create-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
           email: formData.email,
-          priceId: 'price_1QkaBERubwCQmDCmEAZLWGSr', // Your Stripe Price ID
           successUrl: `${process.env.NEXT_PUBLIC_PLAYOUT_URL}?session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: `${process.env.NEXT_PUBLIC_STUDIO_URL}/signup`
         })
       })
 
-      if (!stripeRes.ok) throw new Error('Failed to create checkout session')
+      if (!stripeRes.ok) {
+        const data = await stripeRes.json()
+        throw new Error(data.error || 'Failed to create checkout session')
+      }
 
       const { url } = await stripeRes.json()
+      console.log('Redirecting to Stripe:', url)
+      
       window.location.href = url
 
     } catch (err: any) {
+      console.error('Signup error:', err)
       setError(err.message)
       setLoading(false)
     }
@@ -155,7 +165,7 @@ export default function SignupPage() {
           </p>
 
           <p className="text-xs text-slate-500 text-center">
-            By signing up, you'll be redirected to Stripe to securely set up your 14-day free trial. 
+            By signing up, you'll be redirected to Stripe to set up your 14-day free trial. 
             Your card won't be charged until day 14.
           </p>
         </form>
