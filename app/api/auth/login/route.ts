@@ -1,80 +1,88 @@
 import { NextRequest, NextResponse } from 'next/server'
+import clientPromise from '@/lib/mongodb'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { connectToDatabase } from '@/lib/mongodb'
 
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
 
-    // Validation
     if (!email || !password) {
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: 'Email and password required' },
         { status: 400 }
       )
     }
 
     // Connect to MongoDB
-    const { db } = await connectToDatabase()
+    const client = await clientPromise
+    const db = client.db('intuitv')  // CHANGED FROM 'creator-studio'
+    const users = db.collection('users')
 
     // Find user
-    const user = await db.collection('users').findOne({ 
-      email: email.toLowerCase() 
-    })
-
+    const user = await users.findOne({ email: email.toLowerCase() })
+    
     if (!user) {
       return NextResponse.json(
-        { error: 'Invalid email or password' },
+        { error: 'Invalid credentials' },
         { status: 401 }
       )
     }
 
     // Verify password
-    const validPassword = await bcrypt.compare(password, user.password)
-    if (!validPassword) {
+    const isValid = await bcrypt.compare(password, user.password)
+    
+    if (!isValid) {
       return NextResponse.json(
-        { error: 'Invalid email or password' },
+        { error: 'Invalid credentials' },
         { status: 401 }
       )
     }
 
-    // Generate JWT token
+    // Check subscription status
+    if (user.subscriptionStatus === 'canceled' || user.subscriptionStatus === 'expired') {
+      return NextResponse.json(
+        { error: 'Subscription expired. Please renew.' },
+        { status: 403 }
+      )
+    }
+
+    // Update last login
+    await users.updateOne(
+      { _id: user._id },
+      { $set: { lastLoginAt: new Date() } }
+    )
+
+    // Create JWT token
     const token = jwt.sign(
-      {
+      { 
         userId: user._id.toString(),
         email: user.email,
+        subscriptionStatus: user.subscriptionStatus
       },
-      process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+      process.env.JWT_SECRET!,
       { expiresIn: '30d' }
     )
 
-    // Check trial status
-    const now = new Date()
-    const trialExpired = user.trial_end && new Date(user.trial_end) < now
-    const needsPayment = trialExpired && user.subscription_status === 'trial'
-
-    // Return success with token
+    // Return token and user data
     return NextResponse.json({
       success: true,
       token,
       user: {
         id: user._id.toString(),
-        name: user.name,
         email: user.email,
-        company: user.company,
-        trial_end: user.trial_end,
-        subscription_status: user.subscription_status,
-        needs_payment: needsPayment,
-      },
+        name: user.name,
+        subscriptionStatus: user.subscriptionStatus,
+        isPaid: user.isPaid,
+        trialEnd: user.trialEnd
+      }
     })
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Login error:', error)
     return NextResponse.json(
-      { error: 'Login failed. Please try again.' },
+      { error: 'Server error. Please try again.' },
       { status: 500 }
     )
   }
 }
-
