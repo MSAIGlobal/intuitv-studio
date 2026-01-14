@@ -4,7 +4,6 @@ const nextConfig = {
   images: {
     domains: ['stream.intuitv.app', 'api.intuitv.app'],
   },
-  // Add this for Netlify
   output: 'standalone',
 }
 
