@@ -1,28 +1,38 @@
-import { MongoClient } from 'mongodb'
+import { MongoClient, MongoClientOptions } from 'mongodb'
 
 if (!process.env.MONGODB_URI) {
-  throw new Error('Please add MONGODB_URI to .env')
+  throw new Error('MONGODB_URI environment variable is not set')
 }
 
 const uri = process.env.MONGODB_URI
-const options = {}
+const options: MongoClientOptions = {
+  maxPoolSize: 10,
+  minPoolSize: 5,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+}
 
 let client: MongoClient
 let clientPromise: Promise<MongoClient>
 
-if (process.env.NODE_ENV === 'development') {
-  let globalWithMongo = global as typeof globalThis & {
-    _mongoClientPromise?: Promise<MongoClient>
-  }
+declare global {
+  var _mongoClientPromise: Promise<MongoClient> | undefined
+}
 
-  if (!globalWithMongo._mongoClientPromise) {
+if (process.env.NODE_ENV === 'development') {
+  if (!global._mongoClientPromise) {
     client = new MongoClient(uri, options)
-    globalWithMongo._mongoClientPromise = client.connect()
+    global._mongoClientPromise = client.connect()
   }
-  clientPromise = globalWithMongo._mongoClientPromise
+  clientPromise = global._mongoClientPromise
 } else {
   client = new MongoClient(uri, options)
   clientPromise = client.connect()
 }
+
+// Test connection on server start
+clientPromise
+  .then(() => console.log('✅ MongoDB Connected Successfully'))
+  .catch((err) => console.error('❌ MongoDB Connection Failed:', err))
 
 export default clientPromise
