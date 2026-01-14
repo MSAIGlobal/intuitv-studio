@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
 import bcrypt from 'bcryptjs'
-import jwt from 'jsonwebtoken'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, name } = await request.json()
+    const { email, password, name, company } = await request.json()
 
+    // Validation
     if (!email || !password || !name) {
       return NextResponse.json(
         { error: 'Missing required fields' },
@@ -14,15 +14,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (password.length < 8) {
+      return NextResponse.json(
+        { error: 'Password must be at least 8 characters' },
+        { status: 400 }
+      )
+    }
+
+    // Connect to MongoDB
     const client = await clientPromise
-    const db = client.db('creator-studio')
+    const db = client.db('intuitv')  // CHANGED FROM 'creator-studio'
     const users = db.collection('users')
 
     // Check if user exists
-    const existingUser = await users.findOne({ email })
+    const existingUser = await users.findOne({ email: email.toLowerCase() })
     if (existingUser) {
       return NextResponse.json(
-        { error: 'User already exists' },
+        { error: 'Email already registered' },
         { status: 409 }
       )
     }
@@ -30,56 +38,58 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Create user with 2-day trial
-    const trialEnds = new Date()
-    trialEnds.setDate(trialEnds.getDate() + 2)
-
-    const user = {
-      email,
+    // Create user document
+    const now = new Date()
+    const userData = {
+      email: email.toLowerCase(),
       password: hashedPassword,
       name,
-      createdAt: new Date(),
-      trialEnds,
-      isTrialActive: true,
+      company: company || null,
+      role: 'user',
+      
+      // Subscription fields
+      subscriptionStatus: 'pending', // Will change to 'trialing' after Stripe
       isPaid: false,
+      isTrialActive: false,
+      trialEnd: null,
+      currentPeriodEnd: null,
+      
+      // Stripe fields (filled after checkout)
       stripeCustomerId: null,
-      subscriptionStatus: 'trial',
-      role: 'creator',
+      stripeSubscriptionId: null,
+      lastPaymentDate: null,
+      
+      // Timestamps
+      createdAt: now,
+      updatedAt: now,
+      lastLoginAt: null,
     }
 
-    const result = await users.insertOne(user)
+    // Insert user
+    const result = await users.insertOne(userData)
+    const userId = result.insertedId.toString()
 
-    // Create JWT token
-    const token = jwt.sign(
-      { userId: result.insertedId, email },
-      process.env.JWT_SECRET || 'fallback-secret',
-      { expiresIn: '30d' }
-    )
-
-    // Create user CMS folder
-    const cms = db.collection('cms_content')
-    await cms.insertOne({
-      userId: result.insertedId,
-      folders: [],
-      assets: [],
-      createdAt: new Date(),
-    })
-
+    // Return user ID for Stripe checkout
     return NextResponse.json({
       success: true,
-      token,
-      user: {
-        id: result.insertedId,
-        email,
-        name,
-        trialEnds,
-        isTrialActive: true,
-      },
-    })
-  } catch (error) {
+      userId: userId,
+      email: userData.email,
+      name: userData.name
+    }, { status: 201 })
+
+  } catch (error: any) {
     console.error('Signup error:', error)
+    
+    // Better error messages
+    if (error.code === 11000) {
+      return NextResponse.json(
+        { error: 'Email already exists' },
+        { status: 409 }
+      )
+    }
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Server error. Please try again.' },
       { status: 500 }
     )
   }
