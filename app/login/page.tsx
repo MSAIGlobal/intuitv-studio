@@ -1,4 +1,3 @@
-
 'use client'
 
 import { useState } from 'react'
@@ -19,26 +18,25 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-
     if (!formData.email || !formData.password) {
       setError('Email and password are required')
       return
     }
 
     setLoading(true)
-
     try {
-      // Login with MongoDB backend
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/login`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
-      })
+      // Login via API
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/login`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email,
+            password: formData.password,
+          }),
+        }
+      )
 
       const data = await response.json()
 
@@ -46,18 +44,26 @@ export default function LoginPage() {
         throw new Error(data.error || 'Login failed')
       }
 
-      // Store JWT token
-      if (data.token) {
-        localStorage.setItem('auth_token', data.token)
-        localStorage.setItem('user', JSON.stringify(data.user))
+      // Store JWT + user info (includes name & company)
+      if (data.token && data.user) {
+        const { token, user } = data
+        localStorage.setItem('auth_token', token)
+        localStorage.setItem(
+          'user',
+          JSON.stringify({
+            id: user.id,
+            email: user.email,
+            name: user.name || '',
+            company: user.company || '',
+            trial_end: user.trial_end,
+            subscription_status: user.subscription_status,
+            needs_payment: user.needs_payment || false,
+          })
+        )
       }
 
-      // Success! Redirect to playout.intuitv.com
-      console.log('Login successful! Redirecting to playout...')
-      
-      // Redirect to playout with token in URL
+      // Redirect to playout with token
       window.location.href = `https://playout.intuitv.com?token=${data.token}`
-
     } catch (err: any) {
       console.error('Login error:', err)
       setError(err.message || 'Login failed. Please check your credentials.')
@@ -67,12 +73,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 relative">
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-space-blue via-deep-blue to-space-dark"></div>
       <div className="absolute inset-0 bg-grid opacity-10"></div>
 
-      {/* Content */}
+      {/* Form Container */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -91,23 +97,23 @@ export default function LoginPage() {
           </div>
         </Link>
 
-        {/* Form Card */}
+        {/* Card */}
         <div className="glass-dark rounded-2xl p-8 border border-cyber-cyan/30 glow-cyan">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-orbitron font-bold mb-2">
               Welcome <span className="gradient-text">Back</span>
             </h1>
-            <p className="text-gray-400">
-              Sign in to continue creating
-            </p>
+            <p className="text-gray-400">Sign in to continue creating</p>
           </div>
 
+          {/* Error */}
           {error && (
             <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/50 text-red-400">
               {error}
             </div>
           )}
 
+          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
             <div>
@@ -117,12 +123,14 @@ export default function LoginPage() {
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full pl-12 pr-4 py-3 bg-space-dark/50 border border-cyber-cyan/20 rounded-lg focus:border-cyber-cyan focus:outline-none text-white"
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
                   placeholder="you@company.com"
                   required
                   disabled={loading}
                   autoFocus
+                  className="w-full pl-12 pr-4 py-3 bg-space-dark/50 border border-cyber-cyan/20 rounded-lg focus:border-cyber-cyan focus:outline-none text-white"
                 />
               </div>
             </div>
@@ -135,23 +143,28 @@ export default function LoginPage() {
                 <input
                   type="password"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full pl-12 pr-4 py-3 bg-space-dark/50 border border-cyber-cyan/20 rounded-lg focus:border-cyber-cyan focus:outline-none text-white"
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
                   placeholder="••••••••"
                   required
                   disabled={loading}
+                  className="w-full pl-12 pr-4 py-3 bg-space-dark/50 border border-cyber-cyan/20 rounded-lg focus:border-cyber-cyan focus:outline-none text-white"
                 />
               </div>
             </div>
 
             {/* Forgot Password */}
             <div className="text-right">
-              <Link href="/forgot-password" className="text-sm text-cyber-cyan hover:text-neon-purple transition">
+              <Link
+                href="/forgot-password"
+                className="text-sm text-cyber-cyan hover:text-neon-purple transition"
+              >
                 Forgot password?
               </Link>
             </div>
 
-            {/* Submit Button */}
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
@@ -171,18 +184,21 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Signup Link */}
+          {/* Signup */}
           <div className="text-center mt-6 pt-6 border-t border-cyber-cyan/20">
             <p className="text-gray-400">
               Don't have an account?{' '}
-              <Link href="/signup" className="text-cyber-cyan hover:text-neon-purple transition font-semibold">
+              <Link
+                href="/signup"
+                className="text-cyber-cyan hover:text-neon-purple transition font-semibold"
+              >
                 Start Free Trial
               </Link>
             </p>
           </div>
         </div>
 
-        {/* Security Badge */}
+        {/* Security */}
         <div className="text-center mt-6 flex items-center justify-center gap-6 text-sm text-gray-400">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-cyber-cyan" />
