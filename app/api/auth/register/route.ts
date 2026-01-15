@@ -25,8 +25,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Connect to MongoDB
-    const { db } = await connectToDatabase()
+// Connect to MongoDB
+const client = await clientPromise
+const db = client.db('intuitv')
+
 
     // Check if user already exists
     const existingUser = await db.collection('users').findOne({ email: email.toLowerCase() })
