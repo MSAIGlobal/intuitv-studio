@@ -2,7 +2,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { connectToDatabase } from '@/lib/mongodb'
+import clientPromise from '../../../../lib/mongodb'
+
+
 
 export async function POST(request: NextRequest) {
   try {
