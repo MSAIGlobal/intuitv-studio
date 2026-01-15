@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import clientPromise from '@/lib/mongodb'
+import clientPromise from '../../../../lib/mongodb'
+
 import { ObjectId } from 'mongodb'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
