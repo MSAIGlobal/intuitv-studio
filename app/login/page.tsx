@@ -25,9 +25,9 @@ export default function LoginPage() {
 
     setLoading(true)
     try {
-      // Login via API
+      // Login via backend API
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/login`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://api.intuitv.app'}/auth/login`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -45,9 +45,9 @@ export default function LoginPage() {
       }
 
       // Store JWT + user info (includes name & company)
-      if (data.token && data.user) {
-        const { token, user } = data
-        localStorage.setItem('auth_token', token)
+      if (data.access_token && data.user) {
+        const { access_token, user } = data
+        localStorage.setItem('auth_token', access_token)
         localStorage.setItem(
           'user',
           JSON.stringify({
@@ -62,8 +62,8 @@ export default function LoginPage() {
         )
       }
 
-      // Redirect to playout with token
-      window.location.href = `https://playout.intuitv.com?token=${data.token}`
+      // Redirect to Playout
+      window.location.href = `https://playout.intuitv.com?token=${data.access_token}`
     } catch (err: any) {
       console.error('Login error:', err)
       setError(err.message || 'Login failed. Please check your credentials.')
@@ -106,16 +106,13 @@ export default function LoginPage() {
             <p className="text-gray-400">Sign in to continue creating</p>
           </div>
 
-          {/* Error */}
           {error && (
             <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/50 text-red-400">
               {error}
             </div>
           )}
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email */}
             <div>
               <label className="block text-sm text-gray-300 mb-2">Email Address</label>
               <div className="relative">
@@ -123,9 +120,7 @@ export default function LoginPage() {
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="you@company.com"
                   required
                   disabled={loading}
@@ -135,7 +130,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Password */}
             <div>
               <label className="block text-sm text-gray-300 mb-2">Password</label>
               <div className="relative">
@@ -143,9 +137,7 @@ export default function LoginPage() {
                 <input
                   type="password"
                   value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="••••••••"
                   required
                   disabled={loading}
@@ -154,17 +146,12 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Forgot Password */}
             <div className="text-right">
-              <Link
-                href="/forgot-password"
-                className="text-sm text-cyber-cyan hover:text-neon-purple transition"
-              >
+              <Link href="/forgot-password" className="text-sm text-cyber-cyan hover:text-neon-purple transition">
                 Forgot password?
               </Link>
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
@@ -184,21 +171,16 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Signup */}
           <div className="text-center mt-6 pt-6 border-t border-cyber-cyan/20">
             <p className="text-gray-400">
               Don't have an account?{' '}
-              <Link
-                href="/signup"
-                className="text-cyber-cyan hover:text-neon-purple transition font-semibold"
-              >
+              <Link href="/signup" className="text-cyber-cyan hover:text-neon-purple transition font-semibold">
                 Start Free Trial
               </Link>
             </p>
           </div>
         </div>
 
-        {/* Security */}
         <div className="text-center mt-6 flex items-center justify-center gap-6 text-sm text-gray-400">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-cyber-cyan" />
