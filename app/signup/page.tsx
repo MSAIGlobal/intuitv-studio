@@ -23,12 +23,13 @@ export default function SignupPage() {
     try {
       console.log('Submitting signup...', { email: formData.email, name: formData.name })
       
-      // Create account
-      const signupRes = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      })
+// Create account
+const signupRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://api.intuitv.app'}/auth/register`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(formData)
+})
+
 
       console.log('Signup response status:', signupRes.status)
       
